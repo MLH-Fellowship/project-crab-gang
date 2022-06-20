@@ -46,6 +46,15 @@ def index():
     print('current_user' in session)
     return render_template('index.html', title="Homepage")
 
+@app.route('/script')
+def script():
+    context: str
+    with open("./redeploy-site.sh", "r") as file:
+        context = file.read()
+
+    return render_template("script.html", context=context)
+
+
 
 @app.route('/karl')
 def karl():
