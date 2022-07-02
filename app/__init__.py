@@ -209,7 +209,6 @@ def hobbies():
         gis.search(search_params={'q': hobby})
         for image in gis.results():
             hobbies[hobby] = str(image.url)
-
     return render_template("hobbies.html", hobbies=hobbies, title="Hobbies")
 
 
@@ -243,6 +242,31 @@ def timeline():
     view_newest = [model_to_dict(p) for p in
                 TimeLinePost.select().order_by(TimeLinePost.created_at.desc())]
     return render_template("timeline.html", title="Timeline", posts=view_newest)
+
+
+@app.route('/api/timeline_post', methods=["POST"])
+def timeline_post():
+    name = request.form["name"]
+    email = request.form["email"]
+    content = request.form["content"]
+    timeline_post = TimeLinePost.create(
+        name=name, email=email, content=content)
+
+    return model_to_dict(timeline_post)
+
+
+@app.route('/api/timeline_post', methods=["GET"])
+def get_time_line_post():
+    return {
+        "timeline_posts": [model_to_dict(p)] for p in TimeLinePost.select().order_by(TimeLinePost.created_at.desc())
+    }
+
+
+@app.route('/api/timeline_post', methods=["DELETE"])
+def delete_timeline():
+    TimeLinePost.delete().execute()
+
+    return {"code": 200}
 
 
 if __name__ == "__main__":
