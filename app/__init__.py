@@ -5,6 +5,9 @@ from werkzeug.utils import secure_filename
 from os import urandom
 from typing import List
 from google_images_search import GoogleImagesSearch
+from peewee import Model, MySQLDatabase, CharField, DateTimeField, TextField
+from playhouse.shortcuts import model_to_dict
+import datetime
 import pickle
 
 config = load_dotenv("example.env")
@@ -14,6 +17,28 @@ app.secret_key = urandom(32)  # random 32 bit key
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 gis = GoogleImagesSearch(os.getenv("GOOGLE_PLACES_API"), '5415378a637e6f6e0')
+
+
+user = os.getenv("MYSQL_USER")
+password = os.getenv("MYSQL_PASSWORD")
+host = os.getenv("MYSQL_HOST")
+database = os.getenv("MYSQL_DATABASE")
+mydb = MySQLDatabase(database, user=user, password=password, host=host, port=3306)
+print("connect to the db")
+
+
+class TimeLinePost(Model):
+    name = CharField()
+    email = CharField()
+    content = TextField()
+    created_at = DateTimeField(default=datetime.datetime.now)
+
+    class Meta:
+        database = mydb
+
+
+mydb.connect()
+mydb.create_tables([TimeLinePost])
 
 
 class Data():
@@ -43,8 +68,15 @@ def not_found(e):
 
 @app.route('/')
 def index():
-    print('current_user' in session)
     return render_template('index.html', title="Homepage")
+
+@app.route('/script')
+def script():
+    context: str
+    with open("./redeploy-site.sh", "r") as file:
+        context = file.read()
+
+    return render_template("script.html", context=context)
 
 
 @app.route('/karl')
@@ -53,8 +85,10 @@ def karl():
     last_name = "Hernandez"
     summary = "I am a Mathematics and Linguistics major at Rice University hoping to go to grad school. Currently very interested in CS Theory!"
     email = "cjh16@rice.edu"
-    experience = ["Rice Lambda Group", "Rice Linux Group", "Open Source Experience", "StuyvesantCCC"]
-    hobbies = ["Reading", "Cooking", "Coding", "Mathematical Problem Solving", "Sleeping"]
+    experience = ["Rice Lambda Group", "Rice Linux Group",
+                  "Open Source Experience", "StuyvesantCCC"]
+    hobbies = ["Reading", "Cooking", "Coding",
+               "Mathematical Problem Solving", "Sleeping"]
     education = ["Rice University", "Stuyvesant High School"]
     location = ""
     song = ""
@@ -84,7 +118,8 @@ def joaquin():
     last_name = "Cisneros"
     summary = "I'm a 3rd year computer science major at the University of the Fraser Valley. Aspiring full-stack developer who is always looking to improve themself"
     email = "2014joaquincisneros@gmaill.com"
-    experience = ["University of the Fraser Valley: Computer Lab Monitor (2021)","Major League Hacking: Production engineer fellow (2022)"]
+    experience = [
+        "University of the Fraser Valley: Computer Lab Monitor (2021)", "Major League Hacking: Production engineer fellow (2022)"]
     hobbies = ["Videogames", "Anime", "Leetcoding"]
     education = ["University of the Fraser Valley: Bachelor of Science"]
     location = ""
@@ -100,14 +135,12 @@ def joaquin():
     resume = "JoaquinCisnerosResume.pdf"
 
     joaquin = Data(first_name, last_name, summary, email, experience, hobbies,
-                education, location, song, platform, filename, title, query,
-                resume)
+                   education, location, song, platform, filename, title, query,
+                   resume)
 
     session['current_user'] = pickle.dumps(joaquin)
 
-
     return render_template('portfolio.html', **joaquin.__dict__)
-
 
 
 @app.route('/form')
@@ -176,9 +209,52 @@ def hobbies():
         gis.search(search_params={'q': hobby})
         for image in gis.results():
             hobbies[hobby] = str(image.url)
+    return render_template("hobbies.html", hobbies=hobbies, title="Hobbies")
 
 
-    return render_template("hobbies.html", hobbies=hobbies)
+@app.route('/api/timeline_post', methods=['POST'])
+def post_time_line_post():
+    name = request.form['name']
+    email = request.form['email']
+    content = request.form['content']
+    timeline_post = TimeLinePost.create(name=name, email=email, content=content)
+
+    return model_to_dict(timeline_post)
+
+
+@app.route('/api/timeline_post', methods=["GET"])
+def get_time_line_post():
+    return {
+        'timeline_posts': [
+            model_to_dict(p)
+            for p in TimeLinePost.select().order_by(TimeLinePost.created_at.desc())
+        ]
+    }
+
+
+@app.route('/timeline')
+def timeline():
+    view_newest = [model_to_dict(p) for p in
+                TimeLinePost.select().order_by(TimeLinePost.created_at.desc())]
+    return render_template("timeline.html", title="Timeline", posts=view_newest)
+
+
+@app.route('/api/timeline_post', methods=["POST"])
+def timeline_post():
+    name = request.form["name"]
+    email = request.form["email"]
+    content = request.form["content"]
+    timeline_post = TimeLinePost.create(
+        name=name, email=email, content=content)
+
+    return model_to_dict(timeline_post)
+
+
+@app.route('/api/timeline_post', methods=["DELETE"])
+def delete_timeline():
+    TimeLinePost.delete().execute()
+
+    return {"code": 200}
 
 
 if __name__ == "__main__":
