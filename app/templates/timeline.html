@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="gradient-background promo container-fluid text-center">
+	<img class="img-fluid mw-100 mb-3" src="/static/img/forms.png" />
+	<section class=" form-signin w-100 m-auto rounded text-bg-light">
+		<h4 class="text-center mb-4 text-secondary">Fill out this form</h4>
+		<form id="form">
+
+			<div class="form-floating ">
+				<div>
+					<input type="text" class="form-control" id="name" name="name" placeholder="Full Name" required>
+				</div>
+
+				<div>
+					<input type="email" class="form-control" id="email" name="email" placeholder="Email" required>
+				</div>
+
+				<div>
+					<input type="text" class="form-control" id="content" name="content" placeholder="Content" required>
+				</div>
+
+				<div class="text-center">
+					<input class=" mt-3 btn btn-primary" type="submit" value="Submit" onclick="">
+				</div>
+
+			</div>
+		</form>
+	</section>
+</div>
+
+<div>
+	<div class="container-fluid">
+		<div class="row">
+			<div class="col-md-12">
+				<div class="card">
+					<div class="card-header">
+						<h4 class="card-title">Timeline</h4>
+					</div>
+					<div class="card-body">
+						<div class="table-responsive">
+							<table class="table">
+								<thead class=" text-primary">
+									<th>Name</th>
+									<th>Email</th>
+									<th>Content</th>
+									<th>Date</th>
+								</thead>
+								<tbody>
+									{% for post in posts %}
+									<tr>
+										<td>{{ post.name }}</td>
+										<td>{{ post.email }}</td>
+										<td>{{ post.content }}</td>
+										<td>{{ post.created_at}}</td>
+									</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script charset="utf-8">
+	const form = document.getElementById("form");
+	form.addEventListener("submit", function (e) {
+		e.preventDefault();
+		const formData = new FormData(form);
+		fetch("/api/timeline_post", {
+			method: "POST",
+			body: formData
+		}).then(function (response) {
+			return response.json();
+		}).then(function (data) {
+			window.location.href = "/timeline";
+		});
+	});
+</script>
+
+{% endblock %}
