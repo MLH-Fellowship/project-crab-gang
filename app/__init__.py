@@ -231,11 +231,6 @@ def get_time_line_post():
         ]
     }
 
-@app.route('/api/timeline_post', methods=["DELETE"])
-def delete_timeline():
-    TimeLinePost.delete().execute()
-
-    return {"code": 200}
 
 @app.route('/timeline')
 def timeline():
@@ -253,13 +248,6 @@ def timeline_post():
         name=name, email=email, content=content)
 
     return model_to_dict(timeline_post)
-
-
-@app.route('/api/timeline_post', methods=["GET"])
-def get_time_line_post():
-    return {
-        "timeline_posts": [model_to_dict(p)] for p in TimeLinePost.select().order_by(TimeLinePost.created_at.desc())
-    }
 
 
 @app.route('/api/timeline_post', methods=["DELETE"])
