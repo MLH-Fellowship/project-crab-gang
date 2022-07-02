@@ -202,7 +202,7 @@ def hobbies():
         for image in gis.results():
             hobbies[hobby] = str(image.url)
 
-    return render_template("hobbies.html", hobbies=hobbies)
+    return render_template("hobbies.html", hobbies=hobbies, title="Hobbies")
 
 
 @app.route('/api/timeline_post', methods=["POST"])
@@ -228,6 +228,10 @@ def delete_timeline():
     TimeLinePost.delete().execute()
 
     return {"code": 200}
+
+@app.route('/timeline')
+def timeline():
+    return render_template("timeline.html", title="Timeline")
 
 
 if __name__ == "__main__":
