@@ -70,6 +70,14 @@ def not_found(e):
 def index():
     return render_template('index.html', title="Homepage")
 
+@app.route('/script')
+def script():
+    context: str
+    with open("./redeploy-site.sh", "r") as file:
+        context = file.read()
+
+    return render_template("script.html", context=context)
+
 
 @app.route('/karl')
 def karl():
@@ -205,13 +213,12 @@ def hobbies():
     return render_template("hobbies.html", hobbies=hobbies, title="Hobbies")
 
 
-@app.route('/api/timeline_post', methods=["POST"])
-def timeline_post():
-    name = request.form["name"]
-    email = request.form["email"]
-    content = request.form["content"]
-    timeline_post = TimeLinePost.create(
-        name=name, email=email, content=content)
+@app.route('/api/timeline_post', methods=['POST'])
+def post_time_line_post():
+    name = request.form['name']
+    email = request.form['email']
+    content = request.form['content']
+    timeline_post = TimeLinePost.create(name=name, email=email, content=content)
 
     return model_to_dict(timeline_post)
 
@@ -219,9 +226,11 @@ def timeline_post():
 @app.route('/api/timeline_post', methods=["GET"])
 def get_time_line_post():
     return {
-        "timeline_posts": [model_to_dict(p)] for p in TimeLinePost.select().order_by(TimeLinePost.created_at.desc())
+        'timeline_posts': [
+            model_to_dict(p)
+            for p in TimeLinePost.select().order_by(TimeLinePost.created_at.desc())
+        ]
     }
-
 
 @app.route('/api/timeline_post', methods=["DELETE"])
 def delete_timeline():
@@ -231,7 +240,9 @@ def delete_timeline():
 
 @app.route('/timeline')
 def timeline():
-    return render_template("timeline.html", title="Timeline")
+    view_newest = [model_to_dict(p) for p in
+                TimeLinePost.select().order_by(TimeLinePost.created_at.desc())]
+    return render_template("timeline.html", title="Timeline", posts=view_newest)
 
 
 if __name__ == "__main__":
