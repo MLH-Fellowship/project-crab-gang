@@ -5,10 +5,11 @@ from werkzeug.utils import secure_filename
 from os import urandom
 from typing import List
 from google_images_search import GoogleImagesSearch
-from peewee import Model, MySQLDatabase, CharField, DateTimeField, TextField
+from peewee import Model, MySQLDatabase, CharField, DateTimeField, TextField, SqliteDatabase
 from playhouse.shortcuts import model_to_dict
 import datetime
 import pickle
+import re
 
 config = load_dotenv("example.env")
 UPLOAD_FOLDER = "./app/static/img/"
@@ -18,16 +19,22 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 gis = GoogleImagesSearch(os.getenv("GOOGLE_PLACES_API"), '5415378a637e6f6e0')
 
+# os.environ['TESTING'] = 'true'
+if os.getenv("TESTING") == "true":
+    print("Running in test mode")
+    mydb = SqliteDatabase('file:memory?mode=memory&cache=shared', uri=True)
+else:
+    user = os.getenv("MYSQL_USER")
+    password = os.getenv("MYSQL_PASSWORD")
+    host = os.getenv("MYSQL_HOST")
+    database = os.getenv("MYSQL_DATABASE")
+    mydb = MySQLDatabase(database, user=user,
+                         password=password, host=host, port=3306)
 
-user = os.getenv("MYSQL_USER")
-password = os.getenv("MYSQL_PASSWORD")
-host = os.getenv("MYSQL_HOST")
-database = os.getenv("MYSQL_DATABASE")
-mydb = MySQLDatabase(database, user=user, password=password, host=host, port=3306)
 print("connect to the db")
 
 
-class TimeLinePost(Model):
+class TimelinePost(Model):
     name = CharField()
     email = CharField()
     content = TextField()
@@ -38,7 +45,7 @@ class TimeLinePost(Model):
 
 
 mydb.connect()
-mydb.create_tables([TimeLinePost])
+mydb.create_tables([TimelinePost])
 
 
 class Data():
@@ -69,6 +76,7 @@ def not_found(e):
 @app.route('/')
 def index():
     return render_template('index.html', title="Homepage")
+
 
 @app.route('/script')
 def script():
@@ -212,39 +220,40 @@ def hobbies():
     return render_template("hobbies.html", hobbies=hobbies, title="Hobbies")
 
 
-@app.route('/api/timeline_post', methods=['POST'])
-def post_time_line_post():
-    name = request.form['name']
-    email = request.form['email']
-    content = request.form['content']
-    timeline_post = TimeLinePost.create(name=name, email=email, content=content)
-
-    return model_to_dict(timeline_post)
-
-
 @app.route('/api/timeline_post', methods=["GET"])
 def get_time_line_post():
     return {
         'timeline_posts': [
             model_to_dict(p)
-            for p in TimeLinePost.select().order_by(TimeLinePost.created_at.desc())
+            for p in TimelinePost.select().order_by(TimelinePost.created_at.desc())
         ]
     }
 
 
-@app.route('/timeline')
-def timeline():
-    view_newest = [model_to_dict(p) for p in
-                TimeLinePost.select().order_by(TimeLinePost.created_at.desc())]
-    return render_template("timeline.html", title="Timeline", posts=view_newest)
+# validate the user's email address
+regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
 
 
-@app.route('/api/timeline_post', methods=["POST"])
-def timeline_post():
+@app.route('/api/timeline_post', methods=['POST'])
+def post_time_line_post():
+    if 'name' not in request.form:
+        return "Invalid name", 400
     name = request.form["name"]
+    if name == "":
+        return "Invalid name", 400
+
+    if 'email' not in request.form:
+        return "Invalid email", 400
     email = request.form["email"]
+    if not re.fullmatch(regex, email):
+        return "Invalid email", 400
+
+    if 'content' not in request.form:
+        return "Invalid content", 400
     content = request.form["content"]
-    timeline_post = TimeLinePost.create(
+    if content == "":
+        return "Invalid content", 400
+    timeline_post = TimelinePost.create(
         name=name, email=email, content=content)
 
     return model_to_dict(timeline_post)
@@ -252,9 +261,16 @@ def timeline_post():
 
 @app.route('/api/timeline_post', methods=["DELETE"])
 def delete_timeline():
-    TimeLinePost.delete().execute()
+    TimelinePost.delete().execute()
 
     return {"code": 200}
+
+
+@app.route('/timeline')
+def timeline():
+    view_newest = [model_to_dict(p) for p in
+                   TimelinePost.select().order_by(TimelinePost.created_at.desc())]
+    return render_template("timeline.html", title="Timeline", posts=view_newest)
 
 
 if __name__ == "__main__":
