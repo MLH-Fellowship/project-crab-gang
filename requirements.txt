@@ -1,5 +1,5 @@
 cffi==1.15.0
-click==8.0.1
+click==7.1.2
 cryptography==37.0.2
 Flask==2.0.1
 itsdangerous==2.0.1
@@ -10,3 +10,4 @@ pycparser==2.21
 PyMySQL==1.0.2
 python-dotenv==0.17.1
 Werkzeug==2.0.1
+google_images_search==1.4.3
